@@ -1,6 +1,6 @@
 /**
  * Loosely based on an example from:
- * http://onlinetonegenerator.com/pitch-shifterBuffer.html
+ * http://onlinetonegenerator.com/pitch-shifter.html
  */
 
 // This is pulling SoundTouchJS from the local file system. See the README for proper usage.
@@ -27,19 +27,23 @@ const progressMeter = document.getElementById('progressMeter');
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const gainNode = audioCtx.createGain();
-let shifterBuffer, outputNode;
+let shifter;
 
 const loadSource = async (file) => {
   playBtn.setAttribute('disabled', 'disabled');
-  if (shifterBuffer) {
-    shifterBuffer.off();
+  if (shifter) {
+    shifter.off();
   }
   audioCtx.decodeAudioData(await file.arrayBuffer(), (audioBuffer) => {
-    console.log('decoded the buffer', audioBuffer);
-    shifterBuffer = new PitchShifterBuffer(audioCtx, audioBuffer);
-    shifterBuffer.tempo = tempoSlider.value;
-    shifterBuffer.pitch = pitchSlider.value;
-    duration.innerHTML = shifterBuffer.formattedDuration;
+    console.log('decoded the buffer');
+    shifter = new PitchShifter(audioCtx, audioBuffer, 16384);
+    shifter.tempo = tempoSlider.value;
+    shifter.pitch = pitchSlider.value;
+    shifter.on('play', (detail) => {
+      currTime.innerHTML = detail.formattedTimePlayed;
+      progressMeter.value = detail.percentagePlayed;
+    });
+    duration.innerHTML = shifter.formattedDuration;
     playBtn.removeAttribute('disabled');
   });
 };
@@ -50,19 +54,16 @@ fileInput.onchange = (e) => {
 
 let is_playing = false;
 const play = function () {
-  outputNode = audioCtx.createBufferSource();
-  outputNode.buffer = shifterBuffer.processBuffer();
-  outputNode.connect(gainNode);
+  shifter.connect(gainNode);
   gainNode.connect(audioCtx.destination);
   audioCtx.resume().then(() => {
     is_playing = true;
     this.setAttribute('disabled', 'disabled');
-    outputNode.start(audioCtx.currentTime + 2);
   });
 };
 
 const pause = function (playing = false) {
-  shifterBuffer.stop();
+  shifter.disconnect();
   is_playing = playing;
   playBtn.removeAttribute('disabled');
 };
@@ -71,18 +72,18 @@ playBtn.onclick = play;
 stopBtn.onclick = pause;
 
 tempoSlider.addEventListener('input', function () {
-  tempoOutput.innerHTML = shifterBuffer.tempo = this.value;
+  tempoOutput.innerHTML = shifter.tempo = this.value;
 });
 
 pitchSlider.addEventListener('input', function () {
-  pitchOutput.innerHTML = shifterBuffer.pitch = this.value;
-  shifterBuffer.tempo = tempoSlider.value;
+  pitchOutput.innerHTML = shifter.pitch = this.value;
+  shifter.tempo = tempoSlider.value;
 });
 
 keySlider.addEventListener('input', function () {
-  shifterBuffer.pitchSemitones = this.value;
+  shifter.pitchSemitones = this.value;
   keyOutput.innerHTML = this.value / 2;
-  shifterBuffer.tempo = tempoSlider.value;
+  shifter.tempo = tempoSlider.value;
 });
 
 volumeSlider.addEventListener('input', function () {
@@ -94,9 +95,9 @@ progressMeter.addEventListener('click', function (event) {
   const relX = event.pageX - pos.x;
   const perc = relX / event.target.offsetWidth;
   pause(is_playing);
-  shifterBuffer.percentagePlayed = perc;
+  shifter.percentagePlayed = perc;
   progressMeter.value = 100 * perc;
-  currTime.innerHTML = shifterBuffer.timePlayed;
+  currTime.innerHTML = shifter.timePlayed;
   if (is_playing) {
     play();
   }

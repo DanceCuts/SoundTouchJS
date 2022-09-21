@@ -27,6 +27,7 @@ import Stretch from './Stretch';
 import SoundTouch from './SoundTouch';
 import WebAudioBufferSource from './WebAudioBufferSource';
 import PitchShifter from './PitchShifter';
+import PitchShifterBuffer from './PitchShifterBuffer';
 import getWebAudioNode from './getWebAudioNode';
 
 export {
@@ -37,5 +38,6 @@ export {
   SoundTouch,
   WebAudioBufferSource,
   PitchShifter,
+  PitchShifterBuffer,
   getWebAudioNode
 };
